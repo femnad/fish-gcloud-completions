@@ -6,13 +6,14 @@ import os.path
 import re
 import shutil
 import tarfile
-from typing import Dict
+from typing import List
 from urllib.parse import urlparse
 import uuid
 
 
 BUFFER_SIZE = 8192
 COMPLETIONS_FILE = 'google-cloud-sdk/data/cli/gcloud_completions.py'
+DEFAULT_OUTPUT_FILE = 'gcloud.fish'
 VERSION_REGEX = re.compile('Installing the latest Cloud SDK version \(([0-9]+\.[0-9]+\.[0-9]+)\)')
 
 
@@ -29,21 +30,35 @@ def generate(root, cmds, preceeding, completions, root_flags):
 
     flags.update(root_flags)
 
-    for flag in flags:
-        flag = flag[2:]
-        completions.append(f"complete -c gcloud -f -n '__gcloud_starts_with {starts_with}' -l {flag}")
+    flags_list = ' '.join([f'-l {flag[2:]}' for flag in flags])
+    completions.append(f"complete -c gcloud -f -n '__gcloud_starts_with {starts_with}' {flags_list}")
 
     for sub, subval in subcmds.items():
         generate(sub, subval, preceeding + [sub], completions, root_flags)
 
 
-def write_completion_file(completions_file, output):
+def get_output_file(output: str) -> str:
+    if os.path.isdir(output):
+        return os.path.join(output, DEFAULT_OUTPUT_FILE)
+
+    output_dir = os.path.dirname(output)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    return output
+
+
+def write_completion_file(completions_file: str, output: str, subset: List[str]):
     spec = importlib.util.spec_from_file_location('completions', completions_file)
     completions_module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(completions_module)
 
     commands = completions_module.STATIC_COMPLETION_CLI_TREE
-    root_commands = ' '.join(commands['commands'])
+    if subset:
+        commands = {'commands': {c: v for c, v in commands['commands'].items() if c in subset},
+            'flags': commands['flags']}
+    all_commands = commands['commands']
+
+    root_commands = ' '.join(all_commands)
     root_flags = commands['flags']
 
     out = f"""function __gcloud_needs_command
@@ -67,10 +82,7 @@ complete -c gcloud -f -n __gcloud_needs_command -a '{root_commands}'
     generate(None, commands, [], completions, root_flags)
     out = out + '\n'.join(completions)
 
-    output_dir = os.path.dirname(output)
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
+    output = get_output_file(output)
     with open(output, 'w') as o:
         o.write(out)
 
@@ -125,7 +137,7 @@ def download() -> str:
     return temp_archive
 
 
-def extract(tar_file) -> str:
+def extract(tar_file, remove_archive) -> str:
     def completion_file(mems):
         for ti in mems:
             if ti.name == COMPLETIONS_FILE:
@@ -136,25 +148,31 @@ def extract(tar_file) -> str:
     temp_completion_dir = f'/tmp/{str(uuid.uuid4())}'
     tar.extractall(members=completion_file(tar), path=temp_completion_dir)
 
-    os.remove(tar_file)
+    if remove_archive:
+        os.remove(tar_file)
 
     return temp_completion_dir
 
 
-def process_completion_file(output: str):
-    tar_file = download()
-    completion_dir = extract(tar_file)
+def process_completion_file(tar_file: str, output: str, subset: List[str]):
+    remove_archive = tar_file is None
+    if tar_file is None:
+        tar_file = download()
+
+    completion_dir = extract(tar_file, remove_archive)
     completion_file = os.path.join(completion_dir, COMPLETIONS_FILE)
 
-    write_completion_file(completion_file, output)
+    write_completion_file(completion_file, output, subset)
 
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('-f', '--sdk')
     parser.add_argument('-o', '--output', default=os.path.expanduser('~/.local/share/chezmoi/dot_config/fish/completions/gcloud.fish'))
+    parser.add_argument('-s', '--subset', nargs='+', help='Subset of commands for which to generate completions')
     args = parser.parse_args()
 
-    process_completion_file(args.output)
+    process_completion_file(args.sdk, args.output, args.subset)
 
 
 if __name__ == '__main__':
