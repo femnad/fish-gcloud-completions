@@ -14,7 +14,7 @@ BUFFER_SIZE = 8192
 COMPLETIONS_FILE = 'google-cloud-sdk/data/cli/gcloud_completions.py'
 DEFAULT_OUTPUT_FILE = 'gcloud.fish'
 DEFAULT_OUTPUT_PATH = os.path.expanduser('~/.local/share/chezmoi/dot_config/fish/completions')
-VERSION_REGEX = re.compile(r'Installing the latest Cloud SDK version \(([0-9]+\.[0-9]+\.[0-9]+)\)')
+VERSION_REGEX = re.compile(r'Installing the latest gcloud CLI version \(([0-9]+\.[0-9]+\.[0-9]+)\)')
 
 
 def get_logger():
@@ -110,7 +110,7 @@ def get_latest_version():
     logger.debug('Determining latest version')
 
     client = http.client.HTTPSConnection('cloud.google.com')
-    client.request('GET', '/sdk/docs/quickstart')
+    client.request('GET', '/sdk/docs/install-sdk')
     response = client.getresponse()
 
     match = None
