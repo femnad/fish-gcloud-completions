@@ -10,11 +10,29 @@ from typing import List
 from urllib.parse import urlparse
 import uuid
 
+ARCHIVE_URL = 'https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-{version}-linux-x86_64.tar.gz'
 BUFFER_SIZE = 8192
 COMPLETIONS_FILE = 'google-cloud-sdk/data/cli/gcloud_completions.py'
 DEFAULT_OUTPUT_FILE = 'gcloud.fish'
 DEFAULT_OUTPUT_PATH = os.path.expanduser('~/.local/share/chezmoi/dot_config/fish/completions')
 VERSION_REGEX = re.compile(r'Installing the latest gcloud CLI version \(([0-9]+\.[0-9]+\.[0-9]+)\)')
+
+BASE_COMPLETIONS = """function __gcloud_needs_command
+    set -l tokens (commandline -opc)
+    set -e tokens[1]
+    contains $tokens {root_commands}
+    and return 1
+    return 0
+end
+
+function __gcloud_starts_with
+    set -l subcommand $argv
+    set -l current_cmd (commandline -opc)
+    string match -r -- "^gcloud $subcommand\$" "$current_cmd"
+end
+
+complete -c gcloud -f -n __gcloud_needs_command -a '{root_commands}'
+"""
 
 
 def get_logger():
@@ -77,28 +95,15 @@ def write_completion_file(completions_file: str, output: str, subset: List[str])
         }
     all_commands = commands['commands']
 
+    logger.debug('Generating completions')
+
     root_commands = ' '.join(all_commands)
     root_flags = commands['flags']
-
-    out = f"""function __gcloud_needs_command
-    set -l tokens (commandline -opc)
-    set -e tokens[1]
-    contains $tokens {root_commands}
-    and return 1
-    return 0
-end
-
-function __gcloud_starts_with
-    set -l subcommand $argv
-    set -l current_cmd (commandline -opc)
-    string match -r -- "^gcloud $subcommand\$" "$current_cmd"
-end
-
-complete -c gcloud -f -n __gcloud_needs_command -a '{root_commands}'
-"""
-
     completions = []
+
     generate(None, commands, [], completions, root_flags)
+
+    out = BASE_COMPLETIONS.format(root_commands=root_commands)
     out = out + '\n'.join(completions)
 
     output = get_output_file(output)
@@ -132,7 +137,7 @@ def get_latest_version():
 
 def get_sdk_link() -> str:
     version = get_latest_version()
-    return f'https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-{version}-linux-x86_64.tar.gz'
+    return ARCHIVE_URL.format(version=version)
 
 
 def download() -> str:

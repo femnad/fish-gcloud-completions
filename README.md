@@ -21,7 +21,7 @@ options:
 
 ## Example
 
-Use a locally available archive to output to `$HOME/.config/fish/completions` with only completions for `compute`, `dns` `network-management` and `topic`:
+Use a locally available archive to output to `$HOME/.config/fish/completions` with only completions for `compute`, `dns`, `network-management` and `topic`:
 
 ```shell
 $ ./fgc.py -f google-cloud-cli-411.0.0-linux-x86_64.tar.gz -o ~/.config/fish/completions/ -s compute dns network-management topic
