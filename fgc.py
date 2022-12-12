@@ -2,19 +2,35 @@
 import argparse
 import http.client
 import importlib.util
+import logging
 import os.path
 import re
-import shutil
 import tarfile
 from typing import List
 from urllib.parse import urlparse
 import uuid
 
-
 BUFFER_SIZE = 8192
 COMPLETIONS_FILE = 'google-cloud-sdk/data/cli/gcloud_completions.py'
 DEFAULT_OUTPUT_FILE = 'gcloud.fish'
-VERSION_REGEX = re.compile('Installing the latest Cloud SDK version \(([0-9]+\.[0-9]+\.[0-9]+)\)')
+DEFAULT_OUTPUT_PATH = os.path.expanduser('~/.local/share/chezmoi/dot_config/fish/completions')
+VERSION_REGEX = re.compile(r'Installing the latest Cloud SDK version \(([0-9]+\.[0-9]+\.[0-9]+)\)')
+
+
+def get_logger():
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('[%(asctime)s] %(message)s', '%F %T')
+    ch.setFormatter(formatter)
+
+    logger = logging.getLogger('fish-gcloud-completions')
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(ch)
+
+    return logger
+
+
+logger = get_logger()
 
 
 def generate(root, cmds, preceeding, completions, root_flags):
@@ -54,8 +70,11 @@ def write_completion_file(completions_file: str, output: str, subset: List[str])
 
     commands = completions_module.STATIC_COMPLETION_CLI_TREE
     if subset:
-        commands = {'commands': {c: v for c, v in commands['commands'].items() if c in subset},
-            'flags': commands['flags']}
+        commands = {
+            'commands': {c: v
+                         for c, v in commands['commands'].items() if c in subset},
+            'flags': commands['flags']
+        }
     all_commands = commands['commands']
 
     root_commands = ' '.join(all_commands)
@@ -88,6 +107,8 @@ complete -c gcloud -f -n __gcloud_needs_command -a '{root_commands}'
 
 
 def get_latest_version():
+    logger.debug('Determining latest version')
+
     client = http.client.HTTPSConnection('cloud.google.com')
     client.request('GET', '/sdk/docs/quickstart')
     response = client.getresponse()
@@ -120,6 +141,7 @@ def download() -> str:
     sdk_link = get_sdk_link()
     url = urlparse(sdk_link)
 
+    logger.debug('Downloading latest version')
     client = http.client.HTTPSConnection(url.netloc)
     client.request('GET', url.path)
     response = client.getresponse()
@@ -138,6 +160,8 @@ def download() -> str:
 
 
 def extract(tar_file, remove_archive) -> str:
+    logger.debug('Extracting completions file')
+
     def completion_file(mems):
         for ti in mems:
             if ti.name == COMPLETIONS_FILE:
@@ -167,8 +191,8 @@ def process_completion_file(tar_file: str, output: str, subset: List[str]):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-f', '--sdk')
-    parser.add_argument('-o', '--output', default=os.path.expanduser('~/.local/share/chezmoi/dot_config/fish/completions/gcloud.fish'))
+    parser.add_argument('-f', '--sdk', help='gcloud archive file')
+    parser.add_argument('-o', '--output', default=DEFAULT_OUTPUT_PATH)
     parser.add_argument('-s', '--subset', nargs='+', help='Subset of commands for which to generate completions')
     args = parser.parse_args()
 
