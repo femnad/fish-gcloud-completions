@@ -14,7 +14,7 @@ ARCHIVE_URL = 'https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google
 BUFFER_SIZE = 8192
 COMPLETIONS_FILE = 'google-cloud-sdk/data/cli/gcloud_completions.py'
 DEFAULT_OUTPUT_FILE = 'gcloud.fish'
-DEFAULT_OUTPUT_PATH = os.path.expanduser('~/.local/share/chezmoi/dot_config/fish/completions')
+DEFAULT_OUTPUT_PATH = os.path.expanduser('~/.config/fish/completions')
 VERSION_REGEX = re.compile(r'Installing the latest gcloud CLI version \(([0-9]+\.[0-9]+\.[0-9]+)\)')
 
 BASE_COMPLETIONS = """function __gcloud_needs_command

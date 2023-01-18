@@ -16,7 +16,7 @@ options:
 ```
 
 * `-f`: You can use this option to specify an already downloaded `google-cloud-cli-[...].tar.gz` file. If this is unset the latest CLI archive will be downloaded.
-* `-o`: Where to put the resulting completions file, default is `$HOME/.local/share/chezmoi/dot_config/fish/completions`, which is the default [Chezmoi](https://www.chezmoi.io/) source directory.
+* `-o`: Where to put the resulting completions file, default is `$HOME/.config/fish/completions`.
 * `-s`: `gcloud` has many subcommands and processing them naively takes some time, which causes longer wait times for command completions. Alternatively, you can use this argument to specify the top-level subcommands you are solely interested in, like `compute`, `dns` etc.
 
 ## Example
