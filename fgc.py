@@ -6,9 +6,9 @@ import logging
 import os.path
 import re
 import tarfile
+import uuid
 from typing import List
 from urllib.parse import urlparse
-import uuid
 
 ARCHIVE_URL = 'https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-{version}-linux-x86_64.tar.gz'
 BUFFER_SIZE = 8192
@@ -89,8 +89,10 @@ def write_completion_file(completions_file: str, output: str, subset: List[str])
     commands = completions_module.STATIC_COMPLETION_CLI_TREE
     if subset:
         commands = {
-            'commands': {c: v
-                         for c, v in commands['commands'].items() if c in subset},
+            'commands': {
+                c: v
+                for c, v in commands['commands'].items() if c in subset
+            },
             'flags': commands['flags']
         }
     all_commands = commands['commands']
@@ -193,8 +195,11 @@ def process_completion_file(tar_file: str, output: str, subset: List[str]):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--sdk', help='gcloud archive file')
-    parser.add_argument('-o', '--output', default=DEFAULT_OUTPUT_PATH)
-    parser.add_argument('-s', '--subset', nargs='+', help='Subset of commands for which to generate completions')
+    parser.add_argument('-o', '--output', help='Output directory or file name', default=DEFAULT_OUTPUT_PATH)
+    parser.add_argument('-s',
+                        '--subset',
+                        nargs='+',
+                        help='Subset of top-level commands for which to generate completions')
     args = parser.parse_args()
 
     process_completion_file(args.sdk, args.output, args.subset)
