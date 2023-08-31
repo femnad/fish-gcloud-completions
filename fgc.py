@@ -135,18 +135,14 @@ def get_latest_version():
     return match.group(1)
 
 
-def get_sdk_link() -> str:
-    version = get_latest_version()
-    return ARCHIVE_URL.format(version=version)
-
-
 def download() -> str:
     temp_archive = f'/tmp/{str(uuid.uuid4())}'
 
-    sdk_link = get_sdk_link()
+    version = get_latest_version()
+    sdk_link = ARCHIVE_URL.format(version=version)
     url = urlparse(sdk_link)
 
-    logger.debug('Downloading latest version')
+    logger.debug(f'Downloading latest version ({version})')
     client = http.client.HTTPSConnection(url.netloc)
     client.request('GET', url.path)
     response = client.getresponse()
